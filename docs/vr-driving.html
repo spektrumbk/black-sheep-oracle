@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ทดสอบขับรถใบขับขี่ — Black_Sheep Oracle</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        :root {
+            --bg: #0d1117;
+            --panel: rgba(22, 27, 34, 0.92);
+            --accent: #00ff88;
+            --warn: #ffd700;
+            --danger: #ff4444;
+            --text: #e6edf3;
+            --muted: #8b949e;
+            --border: rgba(0, 255, 136, 0.2);
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Noto Sans Thai', sans-serif;
+            overflow: hidden;
+            height: 100vh
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100%
+        }
+
+        /* HUD */
+        #hud {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 10
+        }
+
+        /* Top bar */
+        #topbar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: .75rem 1.5rem;
+            background: rgba(13, 17, 23, 0.85);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            pointer-events: auto
+        }
+
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .9rem;
+            color: var(--accent);
+            font-weight: 700
+        }
+
+        #scenario-label {
+            font-size: .85rem;
+            color: var(--warn);
+            font-weight: 600;
+            letter-spacing: 1px
+        }
+
+        #score-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .85rem;
+            background: rgba(0, 255, 136, .1);
+            border: 1px solid var(--border);
+            padding: .25rem .75rem;
+            border-radius: 100px;
+            color: var(--accent)
+        }
+
+        /* Speed & controls panel */
+        #left-panel {
+            position: absolute;
+            left: 1rem;
+            top: 5rem;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            width: 160px;
+            backdrop-filter: blur(8px)
+        }
+
+        .panel-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .65rem;
+            color: var(--muted);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: .5rem
+        }
+
+        .metric {
+            margin-bottom: .75rem
+        }
+
+        .metric-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent)
+        }
+
+        .metric-label {
+            font-size: .7rem;
+            color: var(--muted)
+        }
+
+        .gear-badge {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            font-weight: 700;
+            background: rgba(0, 255, 136, 0.15);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: .2rem .6rem;
+            color: var(--accent);
+            margin-top: .25rem
+        }
+
+        /* Controls hint */
+        #controls-hint {
+            position: absolute;
+            right: 1rem;
+            top: 5rem;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            width: 180px;
+            backdrop-filter: blur(8px);
+            font-size: .8rem
+        }
+
+        .key-row {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            margin-bottom: .4rem;
+            color: var(--muted)
+        }
+
+        .key {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, .2);
+            border-radius: 4px;
+            padding: .1rem .4rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .75rem;
+            color: var(--text)
+        }
+
+        /* Message overlay */
+        #msg-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem 3rem;
+            text-align: center;
+            backdrop-filter: blur(16px);
+            display: none;
+            pointer-events: auto;
+            min-width: 320px
+        }
+
+        #msg-overlay.show {
+            display: block;
+            animation: fadeIn .3s ease
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -60%)
+            }
+
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%)
+            }
+        }
+
+        #msg-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: .5rem
+        }
+
+        #msg-body {
+            color: var(--muted);
+            font-size: .95rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.7
+        }
+
+        .btn-game {
+            padding: .65rem 1.5rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: .95rem;
+            font-family: 'Noto Sans Thai', sans-serif;
+            margin: .25rem;
+            transition: all .2s;
+            pointer-events: auto
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6e40c9, #00ff88);
+            color: #000;
+            font-weight: 700
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 255, 136, .4)
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid var(--border)
+        }
+
+        .btn-secondary:hover {
+            color: var(--text)
+        }
+
+        /* Progress dots */
+        #scenario-dots {
+            position: absolute;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: .75rem
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .2);
+            transition: all .3s
+        }
+
+        .dot.active {
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent)
+        }
+
+        .dot.done {
+            background: #6e40c9
+        }
+
+        /* Result banner */
+        #result-banner {
+            position: absolute;
+            top: 5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: .65rem 2rem;
+            border-radius: 100px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            display: none;
+            animation: slideIn .4s ease
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                top: 4rem
+            }
+
+            to {
+                opacity: 1;
+                top: 5rem
+            }
+        }
+
+        #result-banner.pass {
+            background: rgba(0, 255, 136, .2);
+            border: 1px solid var(--accent);
+            color: var(--accent)
+        }
+
+        #result-banner.fail {
+            background: rgba(255, 68, 68, .2);
+            border: 1px solid var(--danger);
+            color: var(--danger)
+        }
+
+        #result-banner.show {
+            display: block
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div id="hud">
+        <!-- Top Bar -->
+        <div id="topbar">
+            <div class="logo">🐑 Black_Sheep — DLT Test</div>
+            <div id="scenario-label">เลือกท่าทดสอบ</div>
+            <div id="score-badge">คะแนน: <span id="score-val">100</span></div>
+        </div>
+
+        <!-- Left panel -->
+        <div id="left-panel">
+            <div class="panel-title">Telemetry</div>
+            <div class="metric">
+                <div class="metric-val"><span id="speed-val">0</span></div>
+                <div class="metric-label">km/h</div>
+            </div>
+            <div class="metric">
+                <div class="gear-badge" id="gear-val">P</div>
+                <div class="metric-label">เกียร์</div>
+            </div>
+            <div class="metric">
+                <div class="metric-val" style="font-size:1rem;color:var(--warn)" id="penalty-val">0</div>
+                <div class="metric-label">จุดหัก</div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div id="controls-hint">
+            <div class="panel-title" style="margin-bottom:.75rem">Controls</div>
+            <div class="key-row"><span class="key">W</span> หรือ <span class="key">↑</span> เดินหน้า</div>
+            <div class="key-row"><span class="key">S</span> หรือ <span class="key">↓</span> ถอยหลัง</div>
+            <div class="key-row"><span class="key">A</span> <span class="key">D</span> เลี้ยว</div>
+            <div class="key-row"><span class="key">Space</span> เบรก</div>
+            <div class="key-row"><span class="key">R</span> Reset</div>
+        </div>
+
+        <!-- Result Banner -->
+        <div id="result-banner"></div>
+
+        <!-- Message Overlay -->
+        <div id="msg-overlay" class="show">
+            <div id="msg-title">🐑 DLT Driving Test</div>
+            <div id="msg-body">เลือกท่าทดสอบที่ต้องการฝึก<br>ตามมาตรฐานกรมการขนส่งทางบก</div>
+            <button class="btn-game btn-primary" onclick="startScenario(0)">🟩 ท่า 1: ขับตรง-ถอยตรง</button><br>
+            <button class="btn-game btn-primary" onclick="startScenario(1)">🟦 ท่า 2: หยุดเทียบทางเท้า</button><br>
+            <button class="btn-game btn-primary" onclick="startScenario(2)">🟥 ท่า 3: ถอยเข้าซอง</button>
+        </div>
+
+        <!-- Scenario progress -->
+        <div id="scenario-dots">
+            <div class="dot" id="dot-0"></div>
+            <div class="dot" id="dot-1"></div>
+            <div class="dot" id="dot-2"></div>
+        </div>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════
+        // BLACK_SHEEP DLT DRIVING TEST — 3D Canvas Game
+        // ═══════════════════════════════════════════════════════════
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        resize(); window.addEventListener('resize', resize);
+
+        // ── STATE ──
+        const state = {
+            scenario: -1,
+            phase: 'menu', // menu, playing, result
+            score: 100,
+            penalties: 0,
+            scenarioDone: [false, false, false],
+        };
+
+        // ── CAR ──
+        const car = {
+            x: 0, y: 0,
+            angle: 0,  // radians, 0 = right
+            speed: 0,
+            maxSpeed: 3,
+            accel: 0.12,
+            friction: 0.88,
+            turnRate: 0.035,
+            width: 28, height: 52,
+            gear: 'P',
+        };
+
+        // ── INPUT ──
+        const keys = {};
+        window.addEventListener('keydown', e => { keys[e.key] = true; if (e.key === ' ') e.preventDefault(); });
+        window.addEventListener('keyup', e => { keys[e.key] = false; });
+        window.addEventListener('keydown', e => {
+            if (e.key === 'r' || e.key === 'R') resetCar();
+        });
+
+        // ── SCENARIOS ──
+        const scenarios = [
+            {
+                name: '1. ขับตรง-ถอยตรง',
+                nameFull: 'ขับรถเดินหน้าและถอยหลังในทางตรง',
+                desc: 'ขับเดินหน้าไปจนสุดเส้น → ถอยกลับมา\nล้อต้องไม่ทับเส้นขาว 2.5 เมตร',
+                color: '#00ff88',
+            },
+            {
+                name: '2. หยุดเทียบทางเท้า',
+                nameFull: 'ขับรถเดินหน้าหยุดเทียบทางเท้า',
+                desc: 'ขับเดินหน้า หยุดขนานขอบทาง\nห่างขอบทางไม่เกิน 25 cm',
+                color: '#58a6ff',
+            },
+            {
+                name: '3. ถอยเข้าซอง',
+                nameFull: 'ถอยหลังเข้าจอดช่องว่างด้านซ้าย',
+                desc: 'ถอยหลังเข้าช่องจอด\nเปลี่ยนเกียร์ไม่เกิน 7 ครั้ง',
+                color: '#f472b6',
+            }
+        ];
+
+        // ── SCENARIO SETUP ──
+        let lane = {}; // scenario-specific boundaries
+        let touchedLine = false;
+        let gearChanges = 0;
+        let lastGear = 'D';
+        let reachedEnd = false;
+        let parkingPhase = 'forward'; // forward | reversing | done
+        let wallHits = 0;
+
+        function startScenario(idx) {
+            state.scenario = idx;
+            state.phase = 'playing';
+            state.score = 100;
+            state.penalties = 0;
+            touchedLine = false;
+            gearChanges = 0;
+            lastGear = 'D';
+            reachedEnd = false;
+            parkingPhase = 'forward';
+            wallHits = 0;
+
+            const W = canvas.width, H = canvas.height;
+            const cx = W / 2, cy = H / 2;
+
+            if (idx === 0) {
+                // Straight lane 2.5m wide, 20m long (scaled: 125px wide, 500px long)
+                lane = { x: cx - 62, y: cy - 250, w: 124, h: 500, type: 'straight' };
+                car.x = cx; car.y = cy + 200; car.angle = -Math.PI / 2; car.speed = 0;
+            } else if (idx === 1) {
+                // Road with curb at right
+                lane = {
+                    x: cx - 150, y: cy - 10, w: 300, h: 20, type: 'curb',
+                    curbX: cx + 150, curbY: cy, stopMarker: cx + 80
+                };
+                car.x = cx - 120; car.y = cy; car.angle = 0; car.speed = 0;
+            } else if (idx === 2) {
+                // Parking slot on the left
+                lane = {
+                    slotX: cx - 200, slotY: cy - 60, slotW: 80, slotH: 120, type: 'park',
+                    roadX: cx - 250, roadY: cy - 200, roadW: 300, roadH: 400
+                };
+                car.x = cx + 20; car.y = cy - 100; car.angle = Math.PI / 2; car.speed = 0;
+            }
+
+            hideOverlay();
+            updateHUD();
+            document.getElementById('scenario-label').textContent = scenarios[idx].nameFull;
+            document.getElementById(`dot-${idx}`).className = 'dot active';
+        }
+
+        function resetCar() {
+            if (state.scenario >= 0) startScenario(state.scenario);
+        }
+
+        // ── PHYSICS ──
+        function updateCar() {
+            if (state.phase !== 'playing') return;
+
+            const up = keys['ArrowUp'] || keys['w'] || keys['W'];
+            const down = keys['ArrowDown'] || keys['s'] || keys['S'];
+            const left = keys['ArrowLeft'] || keys['a'] || keys['A'];
+            const right = keys['ArrowRight'] || keys['d'] || keys['D'];
+            const brake = keys[' '];
+
+            if (brake) { car.speed *= 0.7; }
+            else if (up) { car.speed += car.accel; car.gear = 'D'; }
+            else if (down) { car.speed -= car.accel * 0.8; car.gear = 'R'; }
+            else { car.speed *= car.friction; }
+
+            // Gear change tracking (scenario 3)
+            if (state.scenario === 2) {
+                const g = car.speed > 0.1 ? 'D' : car.speed < -0.1 ? 'R' : lastGear;
+                if (g !== lastGear && (g === 'D' || g === 'R')) {
+                    gearChanges++;
+                    lastGear = g;
+                    if (gearChanges > 7) addPenalty(10, 'เปลี่ยนเกียร์เกิน 7 ครั้ง');
+                }
+            }
+
+            car.speed = Math.max(-car.maxSpeed * 0.6, Math.min(car.maxSpeed, car.speed));
+            if (Math.abs(car.speed) > 0.05) {
+                const dir = car.speed > 0 ? 1 : -1;
+                if (left) car.angle -= car.turnRate * dir;
+                if (right) car.angle += car.turnRate * dir;
+            }
+
+            car.x += Math.cos(car.angle) * car.speed;
+            car.y += Math.sin(car.angle) * car.speed;
+
+            // Gear display
+            if (Math.abs(car.speed) < 0.05) car.gear = 'P';
+            else if (car.speed > 0) car.gear = 'D';
+            else car.gear = 'R';
+
+            checkScenario();
+            updateHUD();
+        }
+
+        // ── SCENARIO CHECKS ──
+        function checkScenario() {
+            const idx = state.scenario;
+            const cx = canvas.width / 2, cy = canvas.height / 2;
+
+            if (idx === 0) {
+                // Check car stays inside lane x boundary
+                const lx = lane.x, lx2 = lane.x + lane.w;
+                const carLeft = car.x - car.width / 2 * Math.abs(Math.cos(car.angle + Math.PI / 2));
+                const carRight = car.x + car.width / 2 * Math.abs(Math.cos(car.angle + Math.PI / 2));
+
+                if (carLeft < lx + 4 || carRight > lx2 - 4) {
+                    if (!touchedLine) { addPenalty(20, 'ล้อทับเส้น'); touchedLine = true; }
+                } else { touchedLine = false; }
+
+                // Check if reached far end (forward)
+                if (car.y < lane.y + 40 && !reachedEnd) {
+                    reachedEnd = true;
+                    showBanner('✅ เดินหน้าถึงปลายทาง! ถอยหลังกลับ', 'pass');
+                }
+                // Check if returned to start (reverse)
+                if (reachedEnd && car.y > lane.y + lane.h - 60) {
+                    setTimeout(() => scenarioComplete('ผ่าน! ขับตรง-ถอยตรง สำเร็จ'), 500);
+                }
+            }
+
+            if (idx === 1) {
+                // Check if car stopped near curb
+                if (Math.abs(car.speed) < 0.1 && car.x > lane.stopMarker - 20) {
+                    const distFromCurb = Math.abs((car.y + car.height / 2) - lane.curbY);
+                    if (distFromCurb > 25) {
+                        addPenalty(10, `ห่างขอบทาง ${Math.round(distFromCurb)}px เกิน 25cm`);
+                    }
+                    setTimeout(() => scenarioComplete('หยุดเทียบทางเท้า สำเร็จ'), 600);
+                }
+                // Curb collision
+                if (car.y > lane.curbY - 14) {
+                    addPenalty(20, 'ปีนขอบทาง'); car.y = lane.curbY - 14; car.speed = 0;
+                }
+            }
+
+            if (idx === 2) {
+                // Check if car is fully inside parking slot
+                const s = lane;
+                const inX = car.x > s.slotX + 10 && car.x < s.slotX + s.slotW - 10;
+                const inY = car.y > s.slotY + 10 && car.y < s.slotY + s.slotH - 10;
+                if (inX && inY && Math.abs(car.speed) < 0.15 && car.gear === 'P') {
+                    setTimeout(() => scenarioComplete('ถอยเข้าซองสำเร็จ!'), 500);
+                }
+            }
+        }
+
+        function addPenalty(pts, reason) {
+            state.penalties += pts;
+            state.score = Math.max(0, 100 - state.penalties);
+            showBanner(`❌ -${pts} ${reason}`, 'fail');
+        }
+
+        function scenarioComplete(msg) {
+            state.phase = 'result';
+            state.scenarioDone[state.scenario] = true;
+            document.getElementById(`dot-${state.scenario}`).className = 'dot done';
+
+            const passed = state.score >= 60;
+            showOverlay(
+                passed ? '🎉 ผ่านแล้ว!' : '❌ ไม่ผ่าน',
+                `${msg}\n\nคะแนน: ${state.score}/100 จุดหัก: ${state.penalties}`,
+                passed,
+            );
+        }
+
+        // ── UI ──
+        function updateHUD() {
+            document.getElementById('speed-val').textContent = Math.round(Math.abs(car.speed) * 20);
+            document.getElementById('gear-val').textContent = car.gear;
+            document.getElementById('score-val').textContent = state.score;
+            document.getElementById('penalty-val').textContent = state.penalties;
+        }
+
+        function showBanner(msg, type) {
+            const b = document.getElementById('result-banner');
+            b.textContent = msg;
+            b.className = `result-banner show ${type}`;
+            clearTimeout(b._t);
+            b._t = setTimeout(() => b.className = 'result-banner', 2500);
+        }
+
+        function showOverlay(title, body, pass) {
+            const o = document.getElementById('msg-overlay');
+            const allDone = state.scenarioDone.every(v => v);
+            document.getElementById('msg-title').textContent = title;
+            document.getElementById('msg-title').style.color = pass ? 'var(--accent)' : 'var(--danger)';
+            document.getElementById('msg-body').textContent = body;
+            o.innerHTML = `
+        <div id="msg-title" style="font-size:2rem;font-weight:700;margin-bottom:.5rem;color:${pass ? 'var(--accent)' : 'var(--danger)'}">${title}</div>
+        <div id="msg-body" style="color:var(--muted);font-size:.95rem;margin-bottom:1.5rem;white-space:pre-line;line-height:1.7">${body}</div>
+        <button class="btn-game btn-primary" onclick="startScenario(${state.scenario})">🔄 ลองอีกครั้ง</button>
+        <button class="btn-game btn-secondary" onclick="showMenu()">📋 เมนูหลัก</button>
+        ${allDone ? '<br><button class="btn-game btn-primary" onclick="showFinalResult()">🏆 ดูผลรวม</button>' : ''}
+    `;
+            o.className = 'show';
+        }
+
+        function hideOverlay() { document.getElementById('msg-overlay').className = ''; }
+
+        function showMenu() {
+            state.scenario = -1; state.phase = 'menu';
+            document.getElementById('msg-overlay').innerHTML = `
+        <div id="msg-title" style="font-size:1.5rem;font-weight:700;margin-bottom:.5rem">🐑 DLT Driving Test</div>
+        <div id="msg-body" style="color:var(--muted);font-size:.9rem;margin-bottom:1.5rem">เลือกท่าทดสอบที่ต้องการฝึก<br>ตามมาตรฐานกรมการขนส่งทางบก</div>
+        <button class="btn-game btn-primary" onclick="startScenario(0)">🟩 ท่า 1: ขับตรง-ถอยตรง</button><br>
+        <button class="btn-game btn-primary" onclick="startScenario(1)">🟦 ท่า 2: หยุดเทียบทางเท้า</button><br>
+        <button class="btn-game btn-primary" onclick="startScenario(2)">🟥 ท่า 3: ถอยเข้าซอง</button>
+    `;
+            document.getElementById('msg-overlay').className = 'show';
+            document.getElementById('scenario-label').textContent = 'เลือกท่าทดสอบ';
+        }
+
+        function showFinalResult() {
+            const allPassed = state.scenarioDone.every(v => v);
+            document.getElementById('msg-overlay').innerHTML = `
+        <div style="font-size:2rem;margin-bottom:.5rem">🏆 ผลการสอบรวม</div>
+        <div style="font-size:3rem;margin:.5rem 0;color:var(--accent)">${state.score}</div>
+        <div style="color:var(--muted);margin-bottom:1.5rem">คะแนนรวม / 100</div>
+        <div style="color:var(--accent);font-size:1.1rem;margin-bottom:1.5rem">${state.score >= 60 ? '🎉 ผ่านการสอบ!' : '❌ ไม่ผ่าน — ลองอีกครั้ง'}</div>
+        <button class="btn-game btn-primary" onclick="showMenu()">🔄 เริ่มใหม่</button>
+    `;
+        }
+
+        // ── 3D CAMERA ──
+        // Top-down with slight perspective
+        let camX = 0, camY = 0;
+        function updateCamera() {
+            camX += (car.x - canvas.width / 2 - camX) * 0.1;
+            camY += (car.y - canvas.height / 2 - camY) * 0.1;
+        }
+
+        // ── DRAW ──
+        function drawScenario0() {
+            const l = lane;
+            // Road surface
+            ctx.fillStyle = '#1a2030';
+            ctx.fillRect(l.x - 40, l.y - 20, l.w + 80, l.h + 40);
+            // Lane boundary white lines
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(l.x, l.y, l.w, l.h);
+            // Center dashed line
+            ctx.strokeStyle = 'rgba(255,255,100,0.4)';
+            ctx.setLineDash([15, 10]);
+            ctx.beginPath(); ctx.moveTo(l.x + l.w / 2, l.y); ctx.lineTo(l.x + l.w / 2, l.y + l.h);
+            ctx.stroke(); ctx.setLineDash([]);
+            // Start/End markers
+            ctx.fillStyle = 'rgba(0,255,136,0.3)';
+            ctx.fillRect(l.x, l.y, l.w, 20);
+            ctx.fillRect(l.x, l.y + l.h - 20, l.w, 20);
+            ctx.fillStyle = '#00ff88';
+            ctx.font = '600 13px "Noto Sans Thai"';
+            ctx.textAlign = 'center';
+            ctx.fillText('END', l.x + l.w / 2, l.y + 14);
+            ctx.fillText('START', l.x + l.w / 2, l.y + l.h - 7);
+            // Lane width label
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.font = '11px "JetBrains Mono"';
+            ctx.fillText('← 2.5 m →', l.x + l.w / 2, l.y - 5);
+        }
+
+        function drawScenario1() {
+            const l = lane;
+            const W = canvas.width, H = canvas.height;
+            // Road
+            ctx.fillStyle = '#1a2030';
+            ctx.fillRect(l.x - 20, l.y - 80, l.w + 40, l.h + 160);
+            // Curb (grey band at y=l.curbY)
+            ctx.fillStyle = '#555';
+            ctx.fillRect(l.x - 20, l.curbY, l.w + 40, 12);
+            // Curb top
+            const grad = ctx.createLinearGradient(0, l.curbY, 0, l.curbY + 12);
+            grad.addColorStop(0, '#aaa'); grad.addColorStop(1, '#555');
+            ctx.fillStyle = grad;
+            ctx.fillRect(l.x - 20, l.curbY, l.w + 40, 12);
+            // Stop marker
+            ctx.strokeStyle = '#ff4444';
+            ctx.lineWidth = 3; ctx.setLineDash([8, 6]);
+            ctx.beginPath(); ctx.moveTo(l.stopMarker, l.curbY - 80); ctx.lineTo(l.stopMarker, l.curbY);
+            ctx.stroke(); ctx.setLineDash([]);
+            ctx.fillStyle = '#ff4444';
+            ctx.font = '12px "JetBrains Mono"';
+            ctx.textAlign = 'center';
+            ctx.fillText('STOP', l.stopMarker, l.curbY - 85);
+            // 25cm guide
+            ctx.strokeStyle = 'rgba(255,215,0,0.5)';
+            ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+            ctx.beginPath(); ctx.moveTo(l.x - 20, l.curbY - 25); ctx.lineTo(l.stopMarker + 40, l.curbY - 25);
+            ctx.stroke(); ctx.setLineDash([]);
+            ctx.fillStyle = 'rgba(255,215,0,0.7)';
+            ctx.font = '11px "JetBrains Mono"';
+            ctx.fillText('≤ 25 cm', l.x + 30, l.curbY - 28);
+            // Road markings
+            ctx.fillStyle = '#ffd700';
+            ctx.fillRect(l.x, l.curbY - 82, 60, 4);
+            ctx.fillRect(l.x, l.curbY - 40, 40, 4);
+        }
+
+        function drawScenario2() {
+            const s = lane;
+            // Road area
+            ctx.fillStyle = '#1a2030';
+            ctx.fillRect(s.roadX, s.roadY, s.roadW, s.roadH);
+            // Parking slot outline
+            ctx.strokeStyle = '#ff4444';
+            ctx.lineWidth = 3;
+            ctx.fillStyle = 'rgba(244,114,182,0.08)';
+            ctx.fillRect(s.slotX, s.slotY, s.slotW, s.slotH);
+            ctx.strokeRect(s.slotX, s.slotY, s.slotW, s.slotH);
+            // Slot label
+            ctx.fillStyle = '#f472b6';
+            ctx.font = '600 12px "JetBrains Mono"';
+            ctx.textAlign = 'center';
+            ctx.fillText('SLOT', s.slotX + s.slotW / 2, s.slotY + s.slotH / 2);
+            // Pillars
+            ctx.fillStyle = '#f472b6';
+            [[s.slotX, s.slotY], [s.slotX + s.slotW, s.slotY], [s.slotX, s.slotY + s.slotH], [s.slotX + s.slotW, s.slotY + s.slotH]].forEach(([px, py]) => {
+                ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fill();
+            });
+            // Gear counter
+            ctx.fillStyle = gearChanges > 7 ? '#ff4444' : '#ffd700';
+            ctx.font = '700 14px "JetBrains Mono"';
+            ctx.textAlign = 'left';
+            ctx.fillText(`GEAR CHANGES: ${gearChanges}/7`, s.roadX + 10, s.roadY + 20);
+            // Parking maneuver arrow hint
+            ctx.strokeStyle = 'rgba(244,114,182,0.3)';
+            ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            ctx.moveTo(car.x, car.y);
+            ctx.bezierCurveTo(car.x - 50, car.y + 40, s.slotX + s.slotW + 20, s.slotY, s.slotX + s.slotW / 2, s.slotY + s.slotH / 2);
+            ctx.stroke(); ctx.setLineDash([]);
+        }
+
+        function drawCar() {
+            ctx.save();
+            ctx.translate(car.x, car.y);
+            ctx.rotate(car.angle + Math.PI / 2);
+            const w = car.width, h = car.height;
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            ctx.beginPath(); ctx.ellipse(3, 5, w / 2, h / 3, 0, 0, Math.PI * 2); ctx.fill();
+
+            // Body
+            const bodyGrad = ctx.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2);
+            bodyGrad.addColorStop(0, '#2a2a3a'); bodyGrad.addColorStop(1, '#1a1a2a');
+            ctx.fillStyle = bodyGrad;
+            ctx.beginPath();
+            ctx.roundRect(-w / 2, -h / 2, w, h, 6);
+            ctx.fill();
+
+            // Oracle stripe
+            ctx.fillStyle = '#6e40c9';
+            ctx.fillRect(-w / 2 + 3, -h / 2 + 4, w - 6, 6);
+
+            // Windshield
+            ctx.fillStyle = 'rgba(100,200,255,0.3)';
+            ctx.fillRect(-w / 2 + 5, -h / 2 + 12, w - 10, 14);
+
+            // Headlights
+            ctx.fillStyle = car.speed > 0 ? '#ffffaa' : 'rgba(255,255,100,0.3)';
+            ctx.fillRect(-w / 2 + 4, -h / 2 + 2, 10, 5);
+            ctx.fillRect(w / 2 - 14, -h / 2 + 2, 10, 5);
+
+            // Brake lights
+            ctx.fillStyle = Math.abs(car.speed) < 0.1 ? '#ff4444' : 'rgba(255,68,68,0.3)';
+            ctx.fillRect(-w / 2 + 4, h / 2 - 7, 10, 5);
+            ctx.fillRect(w / 2 - 14, h / 2 - 7, 10, 5);
+
+            // Reverse lights
+            if (car.speed < -0.1) {
+                ctx.fillStyle = 'rgba(255,255,200,0.9)';
+                ctx.fillRect(-w / 2 + 4, h / 2 - 7, 10, 5);
+                ctx.fillRect(w / 2 - 14, h / 2 - 7, 10, 5);
+            }
+
+            // Speed lines when fast
+            if (Math.abs(car.speed) > 1.5) {
+                ctx.strokeStyle = `rgba(0,255,136,${Math.min(0.6, (Math.abs(car.speed) - 1.5) / 3)})`;
+                ctx.lineWidth = 1.5;
+                [-8, 0, 8].forEach(ox => {
+                    const dir = car.speed > 0 ? 1 : -1;
+                    ctx.beginPath();
+                    ctx.moveTo(ox, dir * h / 2);
+                    ctx.lineTo(ox, dir * (h / 2 + 15));
+                    ctx.stroke();
+                });
+            }
+            ctx.restore();
+        }
+
+        // ── GRID BACKGROUND ──
+        function drawGrid() {
+            const offsetX = (-camX) % 60;
+            const offsetY = (-camY) % 60;
+            ctx.strokeStyle = 'rgba(110,64,201,0.1)';
+            ctx.lineWidth = 1;
+            for (let x = offsetX; x < canvas.width; x += 60) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (let y = offsetY; y < canvas.height; y += 60) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+        }
+
+        // ── MAIN LOOP ──
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Background
+            ctx.fillStyle = '#0a0f17';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+
+            // Camera transform
+            ctx.save();
+            ctx.translate(-camX, -camY);
+
+            if (state.phase === 'playing' || state.phase === 'result') {
+                if (state.scenario === 0) drawScenario0();
+                else if (state.scenario === 1) drawScenario1();
+                else if (state.scenario === 2) drawScenario2();
+                drawCar();
+            }
+
+            ctx.restore();
+
+            // Mini compass
+            if (state.phase === 'playing') {
+                ctx.save();
+                ctx.translate(canvas.width - 60, canvas.height - 60);
+                ctx.fillStyle = 'rgba(22,27,34,0.8)';
+                ctx.beginPath(); ctx.arc(0, 0, 28, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = 'rgba(0,255,136,0.3)'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.arc(0, 0, 28, 0, Math.PI * 2); ctx.stroke();
+                ctx.rotate(car.angle + Math.PI / 2);
+                ctx.fillStyle = '#00ff88';
+                ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(5, 10); ctx.lineTo(-5, 10); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = '#ff4444';
+                ctx.beginPath(); ctx.moveTo(0, 20); ctx.lineTo(4, -8); ctx.lineTo(-4, -8); ctx.closePath(); ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function loop() {
+            if (state.phase === 'playing') {
+                updateCar();
+                updateCamera();
+            }
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        // Center cam on car initially
+        camX = car.x - canvas.width / 2;
+        camY = car.y - canvas.height / 2;
+        loop();
+    </script>
+</body>
+
+</html>
