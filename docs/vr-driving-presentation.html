@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VR Driving License Test — ระบบจำลองสอบใบขับขี่ 3D</title>
+    <meta name="description" content="ระบบจำลองสอบใบขับขี่ 3D ตามมาตรฐานกรมการขนส่งทางบก พัฒนาด้วย Three.js">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0e17;
+            --bg2: #111827;
+            --bg3: #1a2234;
+            --primary: #3b82f6;
+            --primary-glow: #60a5fa;
+            --accent: #10b981;
+            --accent2: #06d6a0;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --purple: #8b5cf6;
+            --pink: #ec4899;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --glass: rgba(17, 24, 39, 0.7);
+            --card-border: rgba(59, 130, 246, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Noto Sans Thai', sans-serif;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ── NAV ── */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem 2rem;
+            background: rgba(10, 14, 23, 0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: var(--text);
+        }
+
+        .nav-logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .nav-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .nav-title span {
+            color: var(--primary-glow);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: color 0.2s;
+            padding: 0.4rem 0;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary-glow);
+        }
+
+        .nav-badge {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.35rem 1rem;
+            border-radius: 100px;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .nav-badge:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        /* ── HERO ── */
+        #hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            padding: 6rem 2rem 4rem;
+        }
+
+        .hero-bg {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+        }
+
+        .hero-bg canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .hero-gradient {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at center, transparent 0%, var(--bg) 70%);
+            z-index: 1;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            max-width: 900px;
+        }
+
+        .hero-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 100px;
+            padding: 0.4rem 1.2rem;
+            font-size: 0.8rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--primary-glow);
+            margin-bottom: 1.5rem;
+            letter-spacing: 1px;
+        }
+
+        .hero-tag .pulse {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+            }
+
+            50% {
+                opacity: 0.8;
+                box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+            }
+        }
+
+        h1.hero-title {
+            font-size: clamp(2.2rem, 6vw, 4.5rem);
+            font-weight: 900;
+            line-height: 1.15;
+            margin-bottom: 1.2rem;
+        }
+
+        h1.hero-title .gradient {
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 30%, #10b981 60%, #06d6a0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        h1.hero-title .sub {
+            display: block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(1rem, 2.5vw, 1.6rem);
+            font-weight: 400;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        .hero-desc {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            max-width: 650px;
+            margin: 0 auto 2rem;
+            line-height: 1.8;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 3rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.85rem 2rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: 'Noto Sans Thai', sans-serif;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            box-shadow: 0 4px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 35px rgba(59, 130, 246, 0.5);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.08);
+        }
+
+        /* ── STATS ROW ── */
+        .hero-stats {
+            display: flex;
+            gap: 2.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .hero-stat {
+            text-align: center;
+        }
+
+        .hero-stat-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-glow);
+        }
+
+        .hero-stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* ── SECTIONS ── */
+        section {
+            padding: 6rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 3.5rem;
+        }
+
+        .section-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 3px;
+            color: var(--primary-glow);
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+        }
+
+        .section-title {
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
+            font-weight: 800;
+            margin-bottom: 0.75rem;
+        }
+
+        .section-desc {
+            color: var(--text-muted);
+            font-size: 1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* ── SCENARIOS ── */
+        .scenarios-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .scenario-card {
+            background: var(--glass);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(15px);
+            transition: all 0.4s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scenario-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .scenario-card.sc-green::before {
+            background: linear-gradient(90deg, #10b981, #34d399);
+        }
+
+        .scenario-card.sc-blue::before {
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+        }
+
+        .scenario-card.sc-pink::before {
+            background: linear-gradient(90deg, #ec4899, #f472b6);
+        }
+
+        .scenario-card:hover {
+            transform: translateY(-6px);
+            border-color: var(--primary);
+            box-shadow: 0 12px 40px rgba(59, 130, 246, 0.15);
+        }
+
+        .sc-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .sc-green .sc-icon {
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        .sc-blue .sc-icon {
+            background: rgba(59, 130, 246, 0.15);
+        }
+
+        .sc-pink .sc-icon {
+            background: rgba(236, 72, 153, 0.15);
+        }
+
+        .sc-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            margin-bottom: 0.5rem;
+        }
+
+        .sc-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .sc-desc {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.7;
+            margin-bottom: 1rem;
+        }
+
+        .sc-criteria {
+            list-style: none;
+        }
+
+        .sc-criteria li {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-bottom: 0.35rem;
+        }
+
+        .sc-criteria li::before {
+            content: '✓';
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 0.75rem;
+        }
+
+        /* ── SIMULATOR SECTION ── */
+        #simulator {
+            max-width: 100%;
+            padding: 5rem 2rem;
+            background: var(--bg2);
+        }
+
+        .sim-wrapper {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .sim-frame {
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid var(--card-border);
+            background: var(--bg);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .sim-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.85rem 1.5rem;
+            background: rgba(59, 130, 246, 0.06);
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .sim-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .sim-dot.r {
+            background: #ff5f57;
+        }
+
+        .sim-dot.y {
+            background: #febc2e;
+        }
+
+        .sim-dot.g {
+            background: #28c840;
+        }
+
+        .sim-url {
+            flex: 1;
+            margin-left: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 0.4rem 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .sim-url .lock {
+            color: var(--accent);
+            font-size: 0.7rem;
+        }
+
+        .sim-iframe {
+            width: 100%;
+            height: 620px;
+            border: none;
+            display: block;
+        }
+
+        .sim-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* ── CONTROLS ── */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .ctrl-card {
+            background: var(--glass);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+            backdrop-filter: blur(15px);
+            transition: all 0.3s;
+        }
+
+        .ctrl-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--primary);
+        }
+
+        .ctrl-keys {
+            display: flex;
+            gap: 0.4rem;
+            justify-content: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .key {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 38px;
+            height: 38px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .ctrl-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* ── TECH STACK ── */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .tech-card {
+            background: var(--glass);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 2rem;
+            backdrop-filter: blur(15px);
+            transition: all 0.3s;
+        }
+
+        .tech-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.12);
+        }
+
+        .tech-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .tech-name {
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .tech-desc {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            line-height: 1.6;
+        }
+
+        /* ── SCORING ── */
+        #scoring {
+            background: var(--bg2);
+            max-width: 100%;
+            padding: 6rem 2rem;
+        }
+
+        .scoring-wrapper {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .scoring-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .score-card {
+            background: var(--glass);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 2.5rem;
+            backdrop-filter: blur(15px);
+            text-align: center;
+        }
+
+        .score-ring {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 1.25rem;
+            position: relative;
+        }
+
+        .score-ring svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .score-ring circle {
+            fill: none;
+            stroke-width: 6;
+        }
+
+        .score-ring .bg {
+            stroke: rgba(255, 255, 255, 0.06);
+        }
+
+        .score-ring .fg {
+            stroke-linecap: round;
+        }
+
+        .score-ring .pass .fg {
+            stroke: url(#passGrad);
+        }
+
+        .score-ring .fail .fg {
+            stroke: var(--danger);
+        }
+
+        .score-ring .value {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+
+        .score-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .score-desc {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            line-height: 1.6;
+        }
+
+        .tag-pass {
+            display: inline-block;
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--accent);
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 0.2rem 0.7rem;
+            border-radius: 100px;
+            margin-top: 0.75rem;
+        }
+
+        .tag-fail {
+            display: inline-block;
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 0.2rem 0.7rem;
+            border-radius: 100px;
+            margin-top: 0.75rem;
+        }
+
+        /* ── ABOUT PROJECT ── */
+        .about-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .about-text h3 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+
+        .about-text p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.8;
+            margin-bottom: 1rem;
+        }
+
+        .about-features {
+            list-style: none;
+        }
+
+        .about-features li {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.6rem;
+            font-size: 0.92rem;
+        }
+
+        .about-features .check {
+            width: 24px;
+            height: 24px;
+            background: rgba(16, 185, 129, 0.15);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            color: var(--accent);
+            flex-shrink: 0;
+        }
+
+        .about-visual {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .about-card {
+            background: var(--glass);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .about-card-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-glow), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .about-card-lbl {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* ── FOOTER ── */
+        footer {
+            background: var(--bg);
+            border-top: 1px solid var(--card-border);
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        .footer-brand {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-glow), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .footer-sub {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.82rem;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--primary-glow);
+        }
+
+        /* ── REVEAL ── */
+        .reveal {
+            opacity: 0;
+            transform: translateY(25px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: none;
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .about-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-stats {
+                gap: 1.5rem;
+            }
+
+            section {
+                padding: 4rem 1.25rem;
+            }
+
+            .sim-iframe {
+                height: 380px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAV -->
+    <nav>
+        <a href="#" class="nav-brand">
+            <div class="nav-logo">🚗</div>
+            <div class="nav-title">VR <span>Driving</span> Test</div>
+        </a>
+        <ul class="nav-links">
+            <li><a href="#scenarios">ท่าทดสอบ</a></li>
+            <li><a href="#simulator">ทดลองเล่น</a></li>
+            <li><a href="#controls">วิธีเล่น</a></li>
+            <li><a href="#tech">เทคโนโลยี</a></li>
+            <li><a href="#scoring">เกณฑ์คะแนน</a></li>
+        </ul>
+        <a href="#simulator" class="nav-badge">▶ เล่นเลย</a>
+    </nav>
+
+    <!-- HERO -->
+    <section id="hero">
+        <div class="hero-bg">
+            <canvas id="bgCanvas"></canvas>
+        </div>
+        <div class="hero-gradient"></div>
+        <div class="hero-content">
+            <div class="hero-tag">
+                <div class="pulse"></div>
+                VR DRIVING LICENSE TEST · 3D SIMULATOR
+            </div>
+            <h1 class="hero-title">
+                <span class="gradient">ระบบจำลองสอบใบขับขี่</span>
+                <span class="sub">DLT Driving License Test — 3D Simulator</span>
+            </h1>
+            <p class="hero-desc">
+                จำลอง 3 ท่าสอบขับรถตามมาตรฐานกรมการขนส่งทางบก (DLT)
+                พัฒนาด้วย Three.js — เล่นได้ทันทีบนเว็บเบราว์เซอร์ ไม่ต้องติดตั้ง
+            </p>
+            <div class="hero-actions">
+                <a href="#simulator" class="btn btn-primary">🎮 เริ่มทดสอบ</a>
+                <a href="https://github.com/spektrumbk/black-sheep-oracle" target="_blank" class="btn btn-outline">📂
+                    ดูโค้ด →</a>
+            </div>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <div class="hero-stat-num" data-count="3">0</div>
+                    <div class="hero-stat-label">ท่าสอบทั้งหมด</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-num" data-count="100">0</div>
+                    <div class="hero-stat-label">คะแนนเต็ม</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-num" data-count="60">0</div>
+                    <div class="hero-stat-label">คะแนนผ่าน</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-num" data-count="0">0</div>
+                    <div class="hero-stat-label">ค่าติดตั้ง (฿)</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SCENARIOS -->
+    <section id="scenarios">
+        <div class="section-header">
+            <div class="section-tag">__ SCENARIOS</div>
+            <h2 class="section-title">3 ท่าทดสอบตามมาตรฐาน DLT</h2>
+            <p class="section-desc">ครบทุกท่าสอบที่ใช้ในสนามจริงของกรมการขนส่งทางบก</p>
+        </div>
+        <div class="scenarios-grid">
+            <div class="scenario-card sc-green reveal">
+                <div class="sc-icon">🟩</div>
+                <div class="sc-num">SCENARIO 01</div>
+                <div class="sc-name">ขับตรง — ถอยตรง</div>
+                <p class="sc-desc">ทดสอบการควบคุมรถให้ตรง ไม่เฉียวทับเส้น ทั้งเดินหน้าและถอยหลังในเลน 2.5 เมตร ระยะ 20
+                    เมตร</p>
+                <ul class="sc-criteria">
+                    <li>ล้อทับเส้น หัก 20 คะแนน</li>
+                    <li>วิ่งครบ ไป-กลับ ถึงสำเร็จ</li>
+                    <li>ฝึกการควบคุมพวงมาลัย</li>
+                </ul>
+            </div>
+            <div class="scenario-card sc-blue reveal">
+                <div class="sc-icon">🟦</div>
+                <div class="sc-num">SCENARIO 02</div>
+                <div class="sc-name">หยุดเทียบทางเท้า</div>
+                <p class="sc-desc">จอดรถเทียบขอบทางเท้า โดยต้องจอดห่างขอบไม่เกิน 25 ซม. พร้อมหยุดตรงจุดที่กำหนด</p>
+                <ul class="sc-criteria">
+                    <li>ห่างขอบเกิน 25cm หัก 10 คะแนน</li>
+                    <li>ปีนขอบทาง หัก 20 คะแนน</li>
+                    <li>ต้องชะลอและหยุดในจุดที่กำหนด</li>
+                </ul>
+            </div>
+            <div class="scenario-card sc-pink reveal">
+                <div class="sc-icon">🟥</div>
+                <div class="sc-num">SCENARIO 03</div>
+                <div class="sc-name">ถอยเข้าซอง</div>
+                <p class="sc-desc">ถอยรถเข้าลานจอดหรือที่จอดรถ โดยไม่ชนเสาและไม่เปลี่ยนเกียร์เกิน 7 ครั้ง</p>
+                <ul class="sc-criteria">
+                    <li>ชนเสาหรือขอบ หัก 20 คะแนน</li>
+                    <li>เปลี่ยนเกียร์เกิน 7 ครั้ง หัก 10</li>
+                    <li>จอดนิ่งในช่องจอดถึงสำเร็จ</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- SIMULATOR LIVE -->
+    <div id="simulator">
+        <div class="sim-wrapper">
+            <div class="section-header">
+                <div class="section-tag">__ LIVE SIMULATOR</div>
+                <h2 class="section-title">🎮 ทดลองขับด้วยตัวเอง</h2>
+                <p class="section-desc">คลิกที่หน้าจอด้านล่าง เลือกท่าทดสอบ แล้วลองขับได้เลย!</p>
+            </div>
+            <div class="sim-frame reveal">
+                <div class="sim-toolbar">
+                    <div class="sim-dot r"></div>
+                    <div class="sim-dot y"></div>
+                    <div class="sim-dot g"></div>
+                    <div class="sim-url">
+                        <span class="lock">🔒</span>
+                        spektrumbk.github.io/black-sheep-oracle/vr-driving.html
+                    </div>
+                </div>
+                <iframe class="sim-iframe" src="https://spektrumbk.github.io/black-sheep-oracle/vr-driving.html"
+                    title="DLT Driving License Test 3D Simulator" allow="fullscreen" loading="lazy"></iframe>
+            </div>
+            <div class="sim-actions">
+                <a href="https://spektrumbk.github.io/black-sheep-oracle/vr-driving.html" target="_blank"
+                    class="btn btn-primary">🚀 เปิดเต็มจอ ↗</a>
+                <a href="https://github.com/spektrumbk/black-sheep-oracle" target="_blank" class="btn btn-outline">📂
+                    Source Code</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTROLS -->
+    <section id="controls">
+        <div class="section-header">
+            <div class="section-tag">__ HOW TO PLAY</div>
+            <h2 class="section-title">🕹️ วิธีบังคับรถ</h2>
+            <p class="section-desc">ใช้คีย์บอร์ดควบคุมรถจำลอง</p>
+        </div>
+        <div class="controls-grid">
+            <div class="ctrl-card reveal">
+                <div class="ctrl-keys"><span class="key">W</span><span class="key">↑</span></div>
+                <div class="ctrl-label">เดินหน้า</div>
+            </div>
+            <div class="ctrl-card reveal">
+                <div class="ctrl-keys"><span class="key">S</span><span class="key">↓</span></div>
+                <div class="ctrl-label">ถอยหลัง</div>
+            </div>
+            <div class="ctrl-card reveal">
+                <div class="ctrl-keys"><span class="key">A</span><span class="key">←</span></div>
+                <div class="ctrl-label">เลี้ยวซ้าย</div>
+            </div>
+            <div class="ctrl-card reveal">
+                <div class="ctrl-keys"><span class="key">D</span><span class="key">→</span></div>
+                <div class="ctrl-label">เลี้ยวขวา</div>
+            </div>
+            <div class="ctrl-card reveal">
+                <div class="ctrl-keys"><span class="key" style="padding: 0 1rem;">Space</span></div>
+                <div class="ctrl-label">เบรก</div>
+            </div>
+            <div class="ctrl-card reveal">
+                <div class="ctrl-keys"><span class="key">C</span></div>
+                <div class="ctrl-label">สลับมุมกล้อง</div>
+            </div>
+            <div class="ctrl-card reveal">
+                <div class="ctrl-keys"><span class="key">R</span></div>
+                <div class="ctrl-label">รีเซ็ตตำแหน่ง</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TECH STACK -->
+    <section id="tech">
+        <div class="section-header">
+            <div class="section-tag">__ TECHNOLOGY</div>
+            <h2 class="section-title">⚡ เทคโนโลยีที่ใช้</h2>
+            <p class="section-desc">สร้างด้วยเว็บเทคโนโลยีสมัยใหม่ — ไม่ต้องติดตั้ง ไม่ต้อง Plugin</p>
+        </div>
+        <div class="tech-grid">
+            <div class="tech-card reveal">
+                <div class="tech-icon">🎨</div>
+                <div class="tech-name">Three.js</div>
+                <p class="tech-desc">3D Rendering Engine สำหรับเว็บ · สร้างกราฟิก 3D คุณภาพสูงผ่าน WebGL โดยไม่ต้องใช้
+                    plugin</p>
+            </div>
+            <div class="tech-card reveal">
+                <div class="tech-icon">🌐</div>
+                <div class="tech-name">HTML5 + JavaScript</div>
+                <p class="tech-desc">เขียนด้วยภาษาเว็บมาตรฐาน เป็นไฟล์เดียว(Single File) เปิดได้ทุกเบราว์เซอร์ทันที</p>
+            </div>
+            <div class="tech-card reveal">
+                <div class="tech-icon">🚀</div>
+                <div class="tech-name">GitHub Pages</div>
+                <p class="tech-desc">Deploy ฟรีบน GitHub Pages · เข้าถึงได้ทุกที่ผ่าน URL ไม่ต้องมี Server</p>
+            </div>
+            <div class="tech-card reveal">
+                <div class="tech-icon">🏎️</div>
+                <div class="tech-name">Real-time Physics</div>
+                <p class="tech-desc">ระบบฟิสิกส์เรียลไทม์ · เกียร์ D/R/P · เบรก · การชน · คะแนนอัตโนมัติ</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- SCORING -->
+    <div id="scoring">
+        <div class="scoring-wrapper">
+            <div class="section-header">
+                <div class="section-tag">__ SCORING SYSTEM</div>
+                <h2 class="section-title">📊 เกณฑ์การให้คะแนน</h2>
+                <p class="section-desc">เกณฑ์ตามมาตรฐานกรมการขนส่งทางบก</p>
+            </div>
+            <svg width="0" height="0">
+                <defs>
+                    <linearGradient id="passGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#3b82f6" />
+                        <stop offset="100%" style="stop-color:#10b981" />
+                    </linearGradient>
+                </defs>
+            </svg>
+            <div class="scoring-grid">
+                <div class="score-card reveal">
+                    <div class="score-ring">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="bg" cx="50" cy="50" r="44" />
+                            <circle class="fg" cx="50" cy="50" r="44" stroke="url(#passGrad)" stroke-dasharray="276.5"
+                                stroke-dashoffset="0" />
+                        </svg>
+                        <div class="value" style="color: var(--accent);">100</div>
+                    </div>
+                    <div class="score-title">คะแนนเต็ม</div>
+                    <p class="score-desc">ลดคะแนนเมื่อทำผิดกฎ เช่น ทับเส้น ชนขอบ ปีนทางเท้า หรือเปลี่ยนเกียร์เกิน</p>
+                </div>
+                <div class="score-card reveal">
+                    <div class="score-ring">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="bg" cx="50" cy="50" r="44" />
+                            <circle class="fg" cx="50" cy="50" r="44" stroke="url(#passGrad)" stroke-dasharray="276.5"
+                                stroke-dashoffset="110.6" />
+                        </svg>
+                        <div class="value" style="color: var(--primary-glow);">60</div>
+                    </div>
+                    <div class="score-title">คะแนนผ่าน</div>
+                    <p class="score-desc">ต้องได้ 60 คะแนนขึ้นไปถึงจะผ่าน หมายความว่าทำผิดได้ไม่เกิน 40 คะแนน</p>
+                    <span class="tag-pass">≥ 60 = ผ่าน ✓</span>
+                </div>
+                <div class="score-card reveal">
+                    <div class="score-ring">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="bg" cx="50" cy="50" r="44" />
+                            <circle class="fg" cx="50" cy="50" r="44" stroke="var(--danger)" stroke-dasharray="276.5"
+                                stroke-dashoffset="165.9" />
+                        </svg>
+                        <div class="value" style="color: var(--danger);">40</div>
+                    </div>
+                    <div class="score-title">จุดหักสูงสุด</div>
+                    <p class="score-desc">หากถูกหักเกิน 40 คะแนน จะไม่ผ่านการทดสอบ ต้องลองใหม่ตั้งแต่ต้น</p>
+                    <span class="tag-fail">&lt; 60 = ไม่ผ่าน ✗</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ABOUT -->
+    <section id="about">
+        <div class="about-grid">
+            <div class="about-text reveal">
+                <div class="section-tag">__ ABOUT PROJECT</div>
+                <h3>เกี่ยวกับโปรเจกต์นี้</h3>
+                <p>
+                    โปรเจกต์ VR Driving License Test พัฒนาโดย <strong>ณัฐวุฒิ บัวกล้า (Peg)</strong>
+                    นักศึกษาวิศวกรรมคอมพิวเตอร์ มหาวิทยาลัยราชภัฏพิบูลสงคราม
+                    ร่วมกับ AI Agent <strong>Black_Sheep Oracle</strong>
+                </p>
+                <p>
+                    จุดมุ่งหมายคือให้ทุกคนสามารถฝึกซ้อมสอบใบขับขี่ได้ง่ายๆ
+                    ผ่านเว็บเบราว์เซอร์ โดยไม่ต้องไปสนามจริง
+                </p>
+                <ul class="about-features">
+                    <li><span class="check">✓</span> เล่นฟรี ไม่ต้องสมัคร</li>
+                    <li><span class="check">✓</span> เปิดได้ทุกเบราว์เซอร์ (Chrome, Edge, Firefox)</li>
+                    <li><span class="check">✓</span> 3 ท่าสอบครบตาม DLT</li>
+                    <li><span class="check">✓</span> ระบบคะแนนอัตโนมัติ</li>
+                    <li><span class="check">✓</span> Open Source บน GitHub</li>
+                </ul>
+            </div>
+            <div class="about-visual reveal">
+                <div class="about-card">
+                    <div class="about-card-val">3D</div>
+                    <div class="about-card-lbl">กราฟิกสมจริง</div>
+                </div>
+                <div class="about-card">
+                    <div class="about-card-val">0 ฿</div>
+                    <div class="about-card-lbl">ค่าใช้จ่าย</div>
+                </div>
+                <div class="about-card">
+                    <div class="about-card-val">1</div>
+                    <div class="about-card-lbl">ไฟล์ HTML</div>
+                </div>
+                <div class="about-card">
+                    <div class="about-card-val">∞</div>
+                    <div class="about-card-lbl">ลองซ้ำได้ไม่จำกัด</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-brand">🚗 VR Driving License Test</div>
+        <p class="footer-sub">พัฒนาโดย Black_Sheep Oracle × Peg — ม.ราชภัฏพิบูลสงคราม</p>
+        <div class="footer-links">
+            <a href="https://spektrumbk.github.io/black-sheep-oracle/" target="_blank">🐑 Black_Sheep Landing</a>
+            <a href="https://github.com/spektrumbk/black-sheep-oracle" target="_blank">📂 GitHub</a>
+            <a href="https://github.com/Soul-Brews-Studio/oracle-v2/issues/224" target="_blank">🔮 Birth Issue</a>
+        </div>
+    </footer>
+
+    <script>
+        // ── BG CANVAS ──
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        class Particle {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2.5 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.4;
+                this.speedY = (Math.random() - 0.5) * 0.4;
+                this.opacity = Math.random() * 0.4 + 0.1;
+                this.hue = [210, 160, 280][Math.floor(Math.random() * 3)];
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.reset();
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${this.hue}, 70%, 65%, ${this.opacity})`;
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < 100; i++) particles.push(new Particle());
+
+        function connectParticles() {
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 120) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(59, 130, 246, ${0.12 * (1 - dist / 120)})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function animBg() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            connectParticles();
+            requestAnimationFrame(animBg);
+        }
+        animBg();
+
+        // ── COUNTER ──
+        function animateCount(el) {
+            const target = parseInt(el.dataset.count);
+            const dur = 1500;
+            const start = performance.now();
+            function step(now) {
+                const progress = Math.min((now - start) / dur, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = Math.round(eased * target);
+                if (progress < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+
+        // ── REVEAL ──
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    entry.target.querySelectorAll('[data-count]').forEach(animateCount);
+                }
+            });
+        }, { threshold: 0.12 });
+
+        document.querySelectorAll('.reveal, [data-count]').forEach(el => {
+            if (el.dataset.count) {
+                const wrapper = el.closest('.hero-stat') || el;
+                observer.observe(wrapper);
+            } else {
+                observer.observe(el);
+            }
+        });
+
+        // Counter for hero stats
+        document.querySelectorAll('.hero-stat-num[data-count]').forEach(el => {
+            const obs2 = new IntersectionObserver((entries) => {
+                entries.forEach(e => {
+                    if (e.isIntersecting && e.target.textContent === '0') animateCount(e.target);
+                });
+            }, { threshold: 0.5 });
+            obs2.observe(el);
+        });
+    </script>
+</body>
+
+</html>
