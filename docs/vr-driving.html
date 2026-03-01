@@ -569,7 +569,7 @@
         const car = {
             pos: new THREE.Vector3(0, 0, 8),
             angle: 0, speed: 0, steer: 0,
-            maxSpd: 8, accel: .18, fric: .87, turnRate: .038,
+            maxSpd: 3, accel: .08, fric: .87, turnRate: .04,
             gear: 'P', score: 100, penalties: 0,
             gearChanges: 0, lastGear: 'P'
         };
@@ -733,8 +733,8 @@
 
             if (Math.abs(car.speed) > 0.05) {
                 const dir = car.speed > 0 ? 1 : -1;
-                if (lt) car.angle -= car.turnRate * dir * (Math.abs(car.speed) / car.maxSpd * .6 + .4);
-                if (rt) car.angle += car.turnRate * dir * (Math.abs(car.speed) / car.maxSpd * .6 + .4);
+                if (lt) car.angle += car.turnRate * dir * (Math.abs(car.speed) / car.maxSpd * .6 + .4);
+                if (rt) car.angle -= car.turnRate * dir * (Math.abs(car.speed) / car.maxSpd * .6 + .4);
             }
 
             car.pos.x += Math.sin(car.angle) * car.speed * .3;
